@@ -10,8 +10,6 @@ import (
 	"github.com/yahoo/vssh"
 )
 
-var waitDeploy sync.WaitGroup
-
 type Config struct {
 	Env  string
 	Ips  []string
@@ -25,6 +23,9 @@ type execResult struct {
 	errTxt   string
 	exitCode int
 }
+
+var waitDeploy sync.WaitGroup
+var execResultChan chan execResult
 
 func Deploy(cfg Config) error {
 	cmd := cfg.Cmds[0]
@@ -60,25 +61,29 @@ func exec(cmd string, pem string, ip string) (result execResult) {
 	return
 }
 
+func watch() {
+	for k := range execResultChan {
+		fmt.Printf("IP  %v\n", k.ip)
+		fmt.Printf("OUTPUT TEXT = %v\n", k.outTxt)
+		fmt.Printf("ERROR TEXT = %v\n", k.errTxt)
+		fmt.Printf("EXIT CODE = %v\n", k.exitCode)
+		fmt.Println("=========================================================================================")
+		waitDeploy.Done()
+	}
+}
+
 func start(cmd string, pem string, ips []string) error {
 	waitDeploy.Add(len(ips))
-	execResultChan := make(chan execResult, len(ips))
+	execResultChan = make(chan execResult, len(ips))
+	go watch()
 	fmt.Println("START")
 	for _, ip := range ips {
 		fmt.Println("IP = ", ip)
 		go func(cmd string, pem string, ip string) {
-			defer waitDeploy.Done()
 			execResultChan <- exec(cmd, pem, ip)
 		}(cmd, pem, ip)
 	}
 	waitDeploy.Wait()
 	close(execResultChan)
-	for k := range execResultChan {
-		fmt.Printf("✅  %v\n", k.ip)
-		fmt.Printf("OUTPUT TEXT = %v\n", k.outTxt)
-		fmt.Printf("ERROR TEXT = %v\n", k.errTxt)
-		fmt.Printf("EXIT CODE = %v\n", k.exitCode)
-		fmt.Println("=========================================================================================")
-	}
 	return nil
 }
