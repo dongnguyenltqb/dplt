@@ -1,0 +1,12 @@
+cmds:
+  - uname -a
+  - cd /home/ubuntu/abc
+  - git checkout branch_name
+  - git reset --hard origin/branch_name
+  - git pull origin branch_name
+  - npm install
+  - pm2 restart abc
+
+ips:
+  - "10.10.10.10:22"
+  - "10.10.10.10:22"
